@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>JSON ↔ Field Mapper</title>
+<style>
+  :root {
+    --navy: #0B1E3F;
+    --navy-2: #132C56;
+    --ice: #EAF0FB;
+    --lavender: #97A8DE;
+    --orange: #F0861F;
+    --text: #1F2937;
+    --muted: #6B7280;
+    --border: #D7DEEA;
+    --bg: #F5F7FB;
+    --surface: #FFFFFF;
+    --code-bg: #0F2647;
+    --code-text: #DCE6FA;
+    --ok: #1F9D63;
+    --warn: #C9821B;
+    --bad: #C94B3D;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --navy: #0B1E3F;
+      --navy-2: #16305C;
+      --ice: #16223B;
+      --lavender: #8EA0DA;
+      --orange: #F5934A;
+      --text: #E7ECF7;
+      --muted: #96A2BE;
+      --border: #2A3654;
+      --bg: #0A0F1E;
+      --surface: #111A30;
+      --code-bg: #0A1730;
+      --code-text: #CFDCF6;
+      --ok: #4ED08C;
+      --warn: #E0A73E;
+      --bad: #E5675A;
+    }
+  }
+  :root[data-theme="dark"] {
+    --navy: #0B1E3F;
+    --navy-2: #16305C;
+    --ice: #16223B;
+    --lavender: #8EA0DA;
+    --orange: #F5934A;
+    --text: #E7ECF7;
+    --muted: #96A2BE;
+    --border: #2A3654;
+    --bg: #0A0F1E;
+    --surface: #111A30;
+    --code-bg: #0A1730;
+    --code-text: #CFDCF6;
+    --ok: #4ED08C;
+    --warn: #E0A73E;
+    --bad: #E5675A;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Calibri, Arial, "Segoe UI", sans-serif;
+    min-height: 100%;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 20px 60px; }
+  header { margin-bottom: 22px; }
+  .kicker {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    color: var(--orange);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  h1 {
+    margin: 0 0 6px;
+    font-size: 26px;
+    color: var(--navy);
+    font-weight: 800;
+  }
+  :root[data-theme="dark"] h1, @media (prefers-color-scheme: dark) { }
+  body[data-theme] h1 {}
+  h1 { color: var(--navy); }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) h1 { color: #C9D8FC; }
+  }
+  :root[data-theme="dark"] h1 { color: #C9D8FC; }
+  p.sub { margin: 0; color: var(--muted); font-size: 14.5px; max-width: 640px; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 1px 2px rgba(11,30,63,0.04);
+  }
+  .card h2 {
+    margin: 0 0 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--navy);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card h2 { color: #C9D8FC; } }
+  :root[data-theme="dark"] .card h2 { color: #C9D8FC; }
+  .badge {
+    background: var(--navy);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+  }
+  textarea {
+    width: 100%;
+    min-height: 220px;
+    resize: vertical;
+    background: var(--code-bg);
+    color: var(--code-text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    font-family: Consolas, "SFMono-Regular", Menlo, monospace;
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+  textarea:focus { outline: 2px solid var(--orange); outline-offset: 1px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  .actions { display: flex; gap: 10px; align-items: center; margin: 6px 0 18px; flex-wrap: wrap; }
+  button {
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 10px 18px;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .btn-primary { background: var(--orange); color: #fff; }
+  .btn-primary:hover { filter: brightness(1.05); }
+  .btn-ghost { background: transparent; color: var(--navy); border-color: var(--border); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn-ghost { color: #C9D8FC; } }
+  :root[data-theme="dark"] .btn-ghost { color: #C9D8FC; }
+  .status { font-size: 12.5px; color: var(--muted); }
+
+  .output-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 18px; }
+  .output-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 10px; flex-wrap: wrap; }
+  .output-head h2 { margin: 0; font-size: 14px; color: var(--navy); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .output-head h2 { color: #C9D8FC; } }
+  :root[data-theme="dark"] .output-head h2 { color: #C9D8FC; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #fff;
+    background: var(--navy);
+    padding: 9px 10px;
+  }
+  thead th:first-child { border-radius: 8px 0 0 0; }
+  thead th:last-child { border-radius: 0 8px 0 0; }
+  tbody td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  code.k { font-family: Consolas, Menlo, monospace; font-size: 12px; color: var(--navy); background: var(--ice); padding: 2px 6px; border-radius: 4px; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) code.k { color: #C9D8FC; } }
+  :root[data-theme="dark"] code.k { color: #C9D8FC; }
+  .pill { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: .03em; }
+  .pill-exact { background: rgba(31,157,99,0.13); color: var(--ok); }
+  .pill-fuzzy { background: rgba(201,130,27,0.14); color: var(--warn); }
+  .pill-none { background: rgba(201,75,61,0.13); color: var(--bad); }
+  select.override {
+    width: 100%;
+    max-width: 320px;
+    font-size: 12px;
+    padding: 5px 6px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: Consolas, Menlo, monospace;
+  }
+  .table-scroll { overflow-x: auto; }
+  .empty { color: var(--muted); font-size: 13px; padding: 10px 2px; }
+  footer { text-align: center; color: var(--muted); font-size: 11.5px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="kicker">Forms &amp; Automations</span>
+    <h1>JSON ↔ Field Mapper</h1>
+    <p class="sub">Paste a form's field &lt;select&gt; HTML and a JSON template of keys. This matches each key to its field code and wraps it as <code>{{code|label}}</code> automatically.</p>
+  </header>
+
+  <div class="grid">
+    <div class="card">
+      <h2><span class="badge">1</span> HTML field list</h2>
+      <textarea id="htmlInput" placeholder="Paste the <select> HTML here, e.g. &lt;select name=&quot;field_id&quot;&gt;&lt;option value=&quot;fd.application_stage|application stage&quot;&gt;application stage&lt;/option&gt;...&lt;/select&gt;"></textarea>
+      <div class="hint" id="htmlCount">No options parsed yet.</div>
+    </div>
+    <div class="card">
+      <h2><span class="badge">2</span> JSON template</h2>
+      <textarea id="jsonInput" placeholder='{&#10;  "application_stage": "",&#10;  "application_score": "",&#10;  "Upload_Voter_id_card": ""&#10;}'></textarea>
+      <div class="hint" id="jsonCount">No keys parsed yet.</div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn-primary" id="generateBtn">Generate mapping</button>
+    <button class="btn-ghost" id="clearBtn">Clear all</button>
+    <span class="status" id="statusMsg"></span>
+  </div>
+
+  <div class="output-card">
+    <div class="output-head">
+      <h2><span class="badge" style="background:var(--orange)">3</span>&nbsp; Output JSON</h2>
+      <button class="btn-ghost" id="copyBtn">Copy output</button>
+    </div>
+    <textarea id="output" readonly style="min-height:160px;" placeholder="Your mapped JSON will appear here."></textarea>
+  </div>
+
+  <div class="output-card" id="matchTableWrap" style="display:none;">
+    <div class="output-head"><h2>Match confidence</h2></div>
+    <div class="table-scroll">
+      <table id="matchTable">
+        <thead>
+          <tr><th>JSON key</th><th>Matched field</th><th>Confidence</th><th>Override</th></tr>
+        </thead>
+        <tbody id="matchTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>Runs entirely in your browser — nothing is uploaded anywhere.</footer>
+</div>
+
+<script>
+(function() {
+  var htmlInput = document.getElementById('htmlInput');
+  var jsonInput = document.getElementById('jsonInput');
+  var output = document.getElementById('output');
+  var statusMsg = document.getElementById('statusMsg');
+  var htmlCount = document.getElementById('htmlCount');
+  var jsonCount = document.getElementById('jsonCount');
+  var matchTableWrap = document.getElementById('matchTableWrap');
+  var matchTbody = document.getElementById('matchTbody');
+
+  var lastOptions = [];   // {raw, code, label, fieldName, normField, normLabel}
+  var lastKeys = [];
+  var overrides = {};     // key -> raw value string, set by manual dropdown choice
+
+  function normalize(str) {
+    return (str || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+
+  function parseOptions(htmlText) {
+    var doc = new DOMParser().parseFromString(htmlText, 'text/html');
+    var opts = Array.prototype.slice.call(doc.querySelectorAll('option'));
+    return opts.map(function(opt) {
+      var raw = opt.getAttribute('value') || '';
+      var parts = raw.split('|');
+      var code = parts[0] || '';
+      var labelParts = parts.slice(1).filter(function(p) { return p && p.trim().length; });
+      var label = labelParts.length ? labelParts[labelParts.length - 1] : (opt.textContent || '').trim();
+      var dotIdx = code.indexOf('.');
+      var fieldName = dotIdx >= 0 ? code.slice(dotIdx + 1) : code;
+      return {
+        raw: raw,
+        code: code,
+        label: label,
+        fieldName: fieldName,
+        normField: normalize(fieldName),
+        normLabel: normalize(label)
+      };
+    }).filter(function(o) { return o.raw; });
+  }
+
+  function scoreOption(normKey, opt) {
+    if (!opt.normField && !opt.normLabel) return 0;
+    if (normKey === opt.normField && normKey) return 100;
+    if (normKey === opt.normLabel && normKey) return 95;
+    var keyWords = normKey.split(' ').filter(Boolean);
+    if (!keyWords.length) return 0;
+    var best = 0;
+    [opt.normField, opt.normLabel].forEach(function(target) {
+      if (!target) return;
+      var tWords = target.split(' ').filter(Boolean);
+      if (!tWords.length) return;
+      var tSet = {};
+      tWords.forEach(function(w) { tSet[w] = true; });
+      var overlap = 0;
+      keyWords.forEach(function(w) { if (tSet[w]) overlap++; });
+      var union = new Set(keyWords.concat(tWords)).size;
+      var jac = union ? overlap / union : 0;
+      var score = jac * 80;
+      if (score > best) best = score;
+    });
+    return best;
+  }
+
+  function bestMatch(key) {
+    var normKey = normalize(key);
+    var scored = lastOptions.map(function(opt) {
+      return { opt: opt, score: scoreOption(normKey, opt) };
+    }).sort(function(a, b) { return b.score - a.score; });
+    return scored;
+  }
+
+  function confidenceLabel(score) {
+    if (score >= 90) return { text: 'Exact', cls: 'pill-exact' };
+    if (score >= 30) return { text: 'Fuzzy', cls: 'pill-fuzzy' };
+    return { text: 'No match', cls: 'pill-none' };
+  }
+
+  function escapeHtml(s) {
+    return (s || '').replace(/[&<>"']/g, function(c) {
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    });
+  }
+
+  function buildOutput() {
+    if (!lastKeys.length) { output.value = ''; matchTableWrap.style.display = 'none'; return; }
+    var resultObj = {};
+    var rows = [];
+    lastKeys.forEach(function(key) {
+      var chosenRaw = '';
+      var confScore = 0;
+      var chosenLabel = '';
+      var scored = bestMatch(key);
+      var top = scored[0];
+
+      if (overrides.hasOwnProperty(key)) {
+        chosenRaw = overrides[key];
+        var found = lastOptions.filter(function(o) { return o.raw === chosenRaw; })[0];
+        chosenLabel = found ? (found.code + (found.label ? ' | ' + found.label : '')) : '(cleared)';
+        confScore = chosenRaw ? 100 : 0;
+      } else if (top && top.score >= 30) {
+        chosenRaw = top.opt.raw;
+        chosenLabel = top.opt.code + (top.opt.label ? ' | ' + top.opt.label : '');
+        confScore = top.score;
+      }
+
+      resultObj[key] = chosenRaw ? ('{{' + chosenRaw + '}}') : '';
+
+      var conf = confidenceLabel(confScore);
+      var optionsHtml = '<option value="">— leave empty —</option>' +
+        lastOptions.map(function(o) {
+          var sel = o.raw === chosenRaw ? ' selected' : '';
+          var display = o.code + (o.label ? ' | ' + o.label : '');
+          return '<option value="' + escapeHtml(o.raw) + '"' + sel + '>' + escapeHtml(display) + '</option>';
+        }).join('');
+
+      rows.push(
+        '<tr>' +
+          '<td><code class="k">' + escapeHtml(key) + '</code></td>' +
+          '<td>' + (chosenRaw ? escapeHtml(chosenLabel) : '<span class="empty">—</span>') + '</td>' +
+          '<td><span class="pill ' + conf.cls + '">' + conf.text + '</span></td>' +
+          '<td><select class="override" data-key="' + escapeHtml(key) + '">' + optionsHtml + '</select></td>' +
+        '</tr>'
+      );
+    });
+
+    output.value = JSON.stringify(resultObj, null, 2);
+    matchTbody.innerHTML = rows.join('');
+    matchTableWrap.style.display = '';
+
+    Array.prototype.slice.call(matchTbody.querySelectorAll('select.override')).forEach(function(sel) {
+      sel.addEventListener('change', function() {
+        overrides[sel.getAttribute('data-key')] = sel.value;
+        buildOutput();
+      });
+    });
+  }
+
+  function generate() {
+    statusMsg.textContent = '';
+    overrides = {};
+
+    try {
+      lastOptions = parseOptions(htmlInput.value);
+    } catch (e) {
+      lastOptions = [];
+    }
+    htmlCount.textContent = lastOptions.length
+      ? lastOptions.length + ' field option' + (lastOptions.length === 1 ? '' : 's') + ' parsed.'
+      : 'No <option> tags found — paste the full <select> HTML.';
+
+    var parsedJson;
+    try {
+      parsedJson = jsonInput.value.trim() ? JSON.parse(jsonInput.value) : {};
+    } catch (e) {
+      jsonCount.textContent = 'Invalid JSON: ' + e.message;
+      output.value = '';
+      matchTableWrap.style.display = 'none';
+      return;
+    }
+    lastKeys = Object.keys(parsedJson);
+    jsonCount.textContent = lastKeys.length
+      ? lastKeys.length + ' key' + (lastKeys.length === 1 ? '' : 's') + ' found.'
+      : 'No keys found in JSON.';
+
+    if (!lastOptions.length || !lastKeys.length) {
+      output.value = '';
+      matchTableWrap.style.display = 'none';
+      return;
+    }
+
+    buildOutput();
+    var noMatch = lastKeys.filter(function(k) {
+      var top = bestMatch(k)[0];
+      return !top || top.score < 30;
+    }).length;
+    statusMsg.textContent = noMatch
+      ? noMatch + ' key' + (noMatch === 1 ? '' : 's') + ' need review below.'
+      : 'All keys matched.';
+
+    try {
+      localStorage.setItem('fieldmapper_html', htmlInput.value);
+      localStorage.setItem('fieldmapper_json', jsonInput.value);
+    } catch (e) {}
+  }
+
+  document.getElementById('generateBtn').addEventListener('click', generate);
+
+  document.getElementById('clearBtn').addEventListener('click', function() {
+    htmlInput.value = '';
+    jsonInput.value = '';
+    output.value = '';
+    lastOptions = [];
+    lastKeys = [];
+    overrides = {};
+    htmlCount.textContent = 'No options parsed yet.';
+    jsonCount.textContent = 'No keys parsed yet.';
+    statusMsg.textContent = '';
+    matchTableWrap.style.display = 'none';
+    try {
+      localStorage.removeItem('fieldmapper_html');
+      localStorage.removeItem('fieldmapper_json');
+    } catch (e) {}
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', function() {
+    if (!output.value) return;
+    try {
+      navigator.clipboard.writeText(output.value).then(function() {
+        statusMsg.textContent = 'Copied to clipboard.';
+      }).catch(fallbackCopy);
+    } catch (e) {
+      fallbackCopy();
+    }
+  });
+
+  function fallbackCopy() {
+    output.removeAttribute('readonly');
+    output.select();
+    try { document.execCommand('copy'); statusMsg.textContent = 'Copied to clipboard.'; }
+    catch (e) { statusMsg.textContent = 'Copy failed — select the text manually.'; }
+    output.setAttribute('readonly', 'true');
+  }
+
+  try {
+    var savedHtml = localStorage.getItem('fieldmapper_html');
+    var savedJson = localStorage.getItem('fieldmapper_json');
+    if (savedHtml) htmlInput.value = savedHtml;
+    if (savedJson) jsonInput.value = savedJson;
+    if (savedHtml || savedJson) generate();
+  } catch (e) {}
+})();
+</script>
+</body>
+</html>
